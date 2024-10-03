@@ -1,0 +1,114 @@
+select
+	px04_nome as psp,
+	px06_nome as recebedor,
+	count(px01_id_cobranca) as Transações,
+	EXTRACT(EPOCH FROM (avg(px01d_data_hora_processamento - px01_data_hora_criacao))) as tempo_medio_em_seg
+from
+	pix.pix.px01_cobranca
+inner join
+	pix.pix.px01d_pix_recebido
+on
+	px01d_id_cobranca = px01_id_cobranca and
+	px01d_data_referencia = px01_data_referencia
+inner join
+	pix.pix.px04_provedor_servico_pix
+on
+	px04_id_provedor_servico_pix = px01_id_provedor_servico_pix
+inner join
+	pix.pix.px06_recebedor_pix
+on
+	px06_id_recebedor_pix = px01_id_recebedor_pix
+where
+	px01_data_referencia = current_date and
+	px01_id_usuario in (1, 15) and
+	px01d_data_hora_processamento = '2023-01-06'
+group by
+	px04_nome,
+	px06_nome;
+
+
+==================================================================
+------------- SELECT PARA BUSCAR TXID PIX --------------------
+select * from pix.px01_registro_pix where px01_txid = '  20230106190737DB04FA5F2A989996CCB7C';
+select * from pix.px01_registro_pix where px01_status = 1 and px01_data >= '2022-12-01';
+select * from pix.pix.px01_cobranca where px01_id_cobranca = 'E6890081020230201132IeL5U0IRxSS3';
+select px01_data::date, px01_chave_pix, px01a_registro_pix, px01_status, count(*)
+from pix.px01_registro_pix
+left join pix.px01a_titulos_pix on px01_id = px01a_registro_pix
+where px01_status not in (2, 3, 0)
+  and px01a_registro_pix is null
+  and px01_data >= '2023-01-04'
+  and px01_usuario_api not in ('pos-mateus-saque')
+group by  px01_data::date, px01_chave_pix, px01a_registro_pix, px01_status;
+
+select count(1) from pix.px01_registro_pix where px01_data between '2023-01-04' and '2023-01-05';
+
+==================================================================
+                        Por Período
+==================================================================
+
+select
+	px01d_data_referencia as data_ref,
+	count(px01d_id_end_to_end) as qtd_pix_recebidos,
+	sum(px01d_valor) as total_recebido,
+	count(px07_id_devolucao_pix) as qtd_devolucoes,
+	sum(px07_valor) as total_devolvido
+from
+    pix.pix.px01d_pix_recebido
+inner join
+    pix.pix.px01_cobranca
+on
+    px01_id_cobranca = px01d_id_cobranca and
+    px01_data_referencia = px01d_data_referencia
+left join
+    pix.pix.px07_devolucao_pix
+on
+    px07_id_end_to_end = px01d_id_end_to_end
+where
+    px01d_data_referencia BETWEEN '2023-02-01' AND '2023-02-20'
+group by
+	px01d_data_referencia;
+
+
+===========================================================
+
+select
+px01_id_provedor_servico_pix as psp,
+px01_chave_pix_recebedor as chave_pix,
+pp.px02_cpf_cnpj as devedor_cnpj,
+pp.px02_nome as devedor_nome,
+px01_id_cobranca as id_cob,
+px01_data_referencia as dt_ref,
+px01_valor_original as valor,
+px01_id_transacao as txId,
+px01_id_status as status,
+pdpr.px01d_id_end_to_end as e2eId,
+pdpr.px01d_valor as vl_pix,
+pdp.px07_id_devolucao_pix as id_dev,
+pdp.px07_valor as vl_dev,
+pdp.px07_data_solicitacao as dt_solicitacao,
+pdp.px07_data_solicitacao as dt_liquidacao,
+pasdp.px07a_descricao as status_dev
+from
+pix.pix.px01_cobranca pc
+left join
+pix.pix.px01d_pix_recebido pdpr
+on
+pdpr.px01d_id_cobranca = pc.px01_id_cobranca and
+pdpr.px01d_data_referencia = pc.px01_data_referencia
+left join
+pix.pix.px02_pessoa pp
+on
+pp.px02_id_pessoa = pc.px01_id_devedor
+left join
+pix.pix.px07_devolucao_pix pdp
+on
+pdp.px07_id_end_to_end = pdpr.px01d_id_end_to_end
+left join
+pix.pix.px07a_status_devolucao_pix pasdp
+on
+pasdp.px07a_id_status = px07_id_status
+where
+px01_data_referencia >= '2023-01-01'
+and px01_id_status = 2
+and pp.px02_cpf_cnpj = '33965372001000'

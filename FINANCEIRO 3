@@ -1,0 +1,266 @@
+ 
+DECLARE @filial int = 34
+declare @data date = '2023-02-03';
+DECLARE @dataInicial datetime = convert(datetime,@data), @dataFinal datetime = DATEADD(MILLISECOND, -3, CONVERT(DATETIME,DATEADD(DAY, 1,@data)))
+declare @cupom int = 62669, @pdv int = 102;
+
+
+
+-- capa
+SELECT (VALORTOTAL-DESCONTOTOTAL+ACRESCIMOTOTAL) VALOR_VENDA, *
+FROM VMIX.DBO.INTEGRACAO_CUPOM_CAPA capa (nolock)
+WHERE lOJA = @filial
+and DATAMOVIMENTO BETWEEN @dataInicial AND @dataFinal
+AND CANCELADO = 0
+--and PedidoFaturado = 271118723
+and Pdv = @pdv
+and Cupom in (@cupom)
+
+
+
+-- produto
+SELECT
+ITEM.LOJA, ITEM.PDV, ITEM.DATAMOVIMENTO, ITEM.CUPOM, SUM(ITEM.PRECOTOTAL) PRECOTOTAL, SUM(ITEM.PRECOTOTAL - ITEM.DESCONTO + ITEM.ACRESCIMO) AS VALOR_VENDA , SUM(ITEM.DESCONTO) DESCONTO , SUM(ITEM.ACRESCIMO) ACRESCIMO, CANCELADO
+FROM VMIX.DBO.INTEGRACAO_CUPOM_PRODUTOS ITEM (NOLOCK)
+WHERE ITEM.LOJA = @FILIAL AND
+ITEM.DATAMOVIMENTO BETWEEN @DATAINICIAL AND @DATAFINAL
+AND CANCELADO = 0
+AND PDV = @pdv
+AND CUPOM IN (@cupom)
+GROUP BY ITEM.PDV,ITEM.DATAMOVIMENTO,ITEM.CUPOM,CANCELADO, ITEM.LOJA --, datasistema
+ORDER BY ITEM.PDV,ITEM.DATAMOVIMENTO,ITEM.CUPOM;
+
+
+SELECT ValorTotal, DescontoTotal, ValorFaturado, * FROM VMIX..Integracao_Cupom_Capa
+WHERE Loja = 214 AND PDV = 2 AND CUPOM = 5046;
+
+
+===================================================================================
+
+--- RELATORIO pagamento de fatura e garantia estendida PAGAR ------
+
+select * from FINANCEIRO..FN01_LANCAMENTO_CONTAS_RECEBER;
+select * from FINANCEIRO..FN30_TIPO_LANCAMENTO ;
+
+declare @temporaria table
+                    (
+                        idFinalizacao bigint,
+                        dataEmissao date,
+                        pdv bigint,
+                        cupom bigint,
+                        finalizadora bigint,
+                        sequencialPagar bigint
+
+                    )
+
+declare @dataInicial date = '2022-12-29'
+
+while (@dataInicial <= getdate())
+    begin
+
+        print @dataInicial
+        insert into @temporaria
+        select PV30_ID_FINALIZACAO,PV30_DT_EMI,PV30_NUM_PDV,PV30_NUM_CUPOM,PV30_FINALIZADORA,FN06_SEQU
+        from pdv..PV30_INTEGRACAO_FINANCEIRA with (nolock)
+                 inner join financeiro..FN06_LANCAMENTO_CONTAS_PAGAR with (nolock)
+                            on FN06_SEQU = PV30_ID_TITULO and PV30_TIPO_TITULO = 2
+        where PV30_FINALIZADORA in ( 2,19)
+          and FN06_ID_AGENTE_COBRADOR in (1187, 1182, 1189, 1003, 1026, 1187
+            )
+          and PV30_DT_EMI = @dataInicial
+
+        set @dataInicial = dateadd(day, 1, @dataInicial)
+    end
+
+select FN01_ID_TIPO_LANCAMENTO,* from @temporaria
+inner join pdv..PV30_INTEGRACAO_FINANCEIRA with(NOLOCK ) ON idFinalizacao = PV30_ID_FINALIZACAO AND PV30_TIPO_TITULO = 1 and
+                                                            finalizadora = PV30_FINALIZADORA and
+                                                            pdv = PV30_NUM_PDV and
+                                                            cupom = PV30_NUM_CUPOM and
+                                                            dataEmissao = PV30_DT_EMI
+INNER JOIN FINANCEIRO..FN01_LANCAMENTO_CONTAS_RECEBER WITH(NOLOCK) ON FN01_SEQU = PV30_ID_TITULO
+where FN01_ID_TIPO_LANCAMENTO in(79,157)
+
+--- RELATORIO pagamento de fatura e garantia estendida RECEBER------
+declare @temporaria table
+                    (
+                        idFinalizacao bigint,
+                        dataEmissao date,
+                        pdv bigint,
+                        cupom bigint,
+                        finalizadora bigint,
+                        sequencialPagar bigint
+
+                    )
+
+declare @dataInicial date = '2022-11-01'
+
+while (@dataInicial <= getdate())
+    begin
+
+        print @dataInicial
+        insert into @temporaria
+        select PV30_ID_FINALIZACAO,PV30_DT_EMI,PV30_NUM_PDV,PV30_NUM_CUPOM,PV30_FINALIZADORA,FN01_SEQU
+        from pdv..PV30_INTEGRACAO_FINANCEIRA with (nolock)
+                 inner join financeiro..FN01_LANCAMENTO_CONTAS_RECEBER with (nolock)
+                            on FN01_SEQU = PV30_ID_TITULO and PV30_TIPO_TITULO = 2
+        where PV30_FINALIZADORA in(2,19)
+          and FN01_ID_AGENTE_COBRADOR in (1187, 1182, 1189, 1003, 1026, 1187)
+          and PV30_DT_EMI = @dataInicial
+
+        set @dataInicial = dateadd(day, 1, @dataInicial)
+    end
+
+select FN01_ID_TIPO_LANCAMENTO,* from @temporaria
+inner join pdv..PV30_INTEGRACAO_FINANCEIRA with(NOLOCK ) ON idFinalizacao = PV30_ID_FINALIZACAO AND PV30_TIPO_TITULO = 1 and
+                                                            finalizadora = PV30_FINALIZADORA and
+                                                            pdv = PV30_NUM_PDV and
+                                                            cupom = PV30_NUM_CUPOM and
+                                                            dataEmissao = PV30_DT_EMI
+INNER JOIN FINANCEIRO..FN01_LANCAMENTO_CONTAS_RECEBER WITH(NOLOCK) ON FN01_SEQU = PV30_ID_TITULO
+where FN01_ID_TIPO_LANCAMENTO in(79,82,157)
+
+===============================================================================================
+
+--- Requisição Maestro ---
+
+SELECT CD09_ID,
+        CD10_ID   AS PV33A_ID_SESSAO,
+        PV33A_ID_FILIAL AS FILIAL,
+        CD10_DESC AS PV33A_DES_SESSAO,
+        CD01_ID   AS PV33A_ID_PRODUTO,
+        CD01_DESC AS PV33A_DES_PRODUTO,
+        CD01_CODIGO_BARRAS AS PV33A_CODIGO_BARRAS,
+        PV33A_ID_CONGELAMENTO,
+        PV33A_VALOR_MAX_ATACA,
+        PV33A_VALOR_MAX_VAREJ,
+        PV33A_VALOR_GMC_ATACA,
+        PV33A_VALOR_GMC_VAREJ,
+        PV33A_DATA_ALTERACAO,
+        CD36_ID AS PV33A_ID_USUARIO_MAX,
+        CD36_DESC AS PV33A_DES_USUARIO_MAX
+    FROM PDV.dbo.PV33A_SINTETICO_ALTERACAO_PRECO
+    INNER JOIN CADASTRO..CD01_PRODUTO      WITH(NOLOCK) ON CD01_ID = PV33A_ID_PRODUTO
+    INNER JOIN CADASTRO..CD09_DEPARTAMENTO WITH(NOLOCK) ON CD09_ID = CD01_ID_DPTO
+    INNER JOIN CADASTRO..CD10_SECAO        WITH(NOLOCK) ON CD10_ID = CD01_ID_SECAO
+    INNER JOIN CADASTRO..CD36_USUARIO      WITH(NOLOCK) ON CD36_ID = PV33A_ID_USUARIO_MAX
+    WHERE PV33A_ID_FILIAL = 7
+--     AND CD09_ID = 1
+    AND CAST(PV33A_DATA_ALTERACAO AS DATE) >= '2023-01-06' --AND '2022-01-03'
+    order by PV33A_DATA_ALTERACAO desc ;
+
+==============================================================================================
+
+select * from pdv..PV33_LOTE_ALTERACAO_PRECO where PV33_DATA_INICIO > '2023-01-05' order by PV33_DATA_INICIO desc;
+
+
+select count(*) as "GMCore",  from VMIX.dbo.Integracao_Cupom_Capa with (nolock)
+where DataMovimento = convert(date, GETDATE()) and DataSistema >= DATEADD(minute, -1, GETDATE());
+
+select DATEADD(hour, 3, DATEADD(MINUTE, (DATEDIFF(MINUTE, 0, DataSistema) / 1) * 1, 0)) as time, count(*) as GMCore
+from VMIX.dbo.Integracao_Cupom_Capa with (nolock)
+where DataMovimento >= convert(date, GETDATE())
+  and loja NOT IN (159)
+group by DATEADD(hour, 3, DATEADD(MINUTE, (DATEDIFF(MINUTE, 0, DataSistema) / 1) * 1, 0));
+
+
+------------------------------------------------
+                FILIAIS
+------------------------------------------------
+SELECT CD23_ID, CD23_DESC FROM CADASTRO..CD23_FILIAL WHERE CD23_ID_EMPR = 2 AND CD23_ID < 1000;
+
+select * from CADASTRO..CD18_CLIENTE where CD18_ID = 1459034;
+
+select sum() from FINANCEIRO..FN164_BAIXA_FATURA_PDV where FN164_LOJA = 41 and FN164_PDV = 30 and FN164_CUPOM = 90573;
+
+--------------- Cadastro dias de validade Nutricionistas ---------------------------
+select * from CADASTRO..CD162L_PARAM_FILIAL_PRODUTO WITH (NOLOCK) where CD162L_ID_FILIAL = 50 AND CD162L_ID_PARAMETRO_CONFIG = 34 --and CD162L_PARAMETRO = '1\'
+
+--------------------------- Localizar desvio ---------------------------
+   SELECT
+      FN04J_ID_FILIAL
+      , SUM(CASE WHEN FN04J_TIPO = 1 THEN FN04J_VALOR ELSE 0 END) AS valorCredito
+      , SUM(CASE WHEN FN04J_TIPO = 3 THEN FN04J_VALOR ELSE 0 END) AS valorCredito
+      , SUM(CASE WHEN FN04J_TIPO = 2 THEN FN04J_VALOR ELSE 0 END) AS valorDebito
+      , SUM(CASE WHEN FN04J_TIPO = 4 THEN FN04J_VALOR ELSE 0 END) AS ValorDebito
+      , (SUM(CASE WHEN FN04J_TIPO = 4 THEN FN04J_VALOR ELSE 0 END) + SUM(CASE WHEN FN04J_TIPO = 1
+         THEN FN04J_VALOR ELSE 0 END)) - (SUM(CASE WHEN FN04J_TIPO = 3 THEN FN04J_VALOR ELSE 0 END
+      ) + SUM(CASE WHEN FN04J_TIPO = 2 THEN FN04J_VALOR ELSE 0 END)) AS Result
+                  , FN04J_FECHAMENTO_ITEM.FN04J_ID
+   FROM FINANCEIRO.DBO.FN04J_FECHAMENTO_ITEM WITH (NOLOCK)
+   WHERE FN04J_ATIVO = 0
+   AND FN04J_ID_FECHAMENTO in (1335)
+    AND FN04J_ID_FILIAL IN (0)
+   AND FN04J_ID_VINCULO IS NULL
+   GROUP BY FN04J_ID_FILIAL, FN04J_ID;
+
+-- retira o vinculo
+      SELECT FN04J_ATIVO, *
+    FROM FINANCEIRO.DBO.FN04J_FECHAMENTO_ITEM WITH (NOLOCK)
+   WHERE FN04J_ID IN (4636711);
+      SELECT FN04J_ATIVO, *
+    FROM FINANCEIRO.DBO.FN04J_FECHAMENTO_ITEM WITH (NOLOCK)
+   WHERE FN04J_ID IN (4629129,4629130,4629153,4629174,4629184,4629186,4629206,4629208,4629213,4629217,4629218,4629229,4629249,4629252,4630005,4630028,4629438,4629270,4629443);
+
+SELECT
+  VD46_ID,
+  VD45_ID,
+  VD46_ID_PEDIDO
+  VD45_PARCELA,
+  VD46_VALOR,
+  VD44_ID,
+  VD44_DESC,
+  VD43_ID,
+  VD43_DESC
+FROM VENDAS..VD46_FINALIZACAO_PREVENDA WITH (NOLOCK)
+  INNER JOIN VENDAS..VD45_FINALIZADORA_BANDEIRA WITH (NOLOCK) ON VD46_ID_FINALIZADORA_BANDEIRA = VD45_ID
+  INNER JOIN VENDAS..VD44_BANDEIRA WITH ( NOLOCK ) ON VD44_ID = VD45_ID_BANDEIRA
+  INNER JOIN VENDAS..VD43_FINALIZADORA WITH ( NOLOCK ) ON VD45_ID_FINALIZADORA = VD43_ID
+WHERE VD46_ID_PEDIDO = 789608048
+select *  FROM ESTOQUE..ES52_PEDIDO_FINANCEIRO WHERE ES52_ID_PEDIDO = 789608048
+
+========================================================================
+                            CORBAN
+========================================================================
+
+select FN04J_ID_VINCULO,FN04J_ATIVO, *
+from FINANCEIRO..FN04J_FECHAMENTO_ITEM with (nolock)
+inner join FINANCEIRO.dbo.FN04I_FECHAMENTO with (nolock) on FN04J_FECHAMENTO_ITEM.FN04J_ID_FECHAMENTO = FN04I_FECHAMENTO.FN04I_ID
+where FN04J_OBSERVACAO = 'ORIGEM VENDA'
+  and FN04J_HISTORICO like '%7 - BANCO DO BRASIL|1297%'
+  and FN04J_ID_FECHAMENTO = 1335;
+
+------------------ CORBAB MUDAR ID_FECHAMENTO PRA 853 ---------------
+select * from FINANCEIRO.dbo.FN04J_FECHAMENTO_ITEM
+where FN04J_ID in (4636528,4636532,4636535,4636540,4636543,4636548,4636553,4636559,4636565,4636569);
+
+
+=============================================================
+                LANÇAMENTOS TESOURARIA
+=============================================================
+select * from FINANCEIRO..FN178K_TIPO_NUMERARIO;
+
+select * from FINANCEIRO..FN178_NUMERARIO where FN178_ID_FILIAL = 187 and FN178_DATA_VENDA = '2023-02-21'
+
+select * from CREDNOSSO..CR07_SERVICOS_TDS
+where CR07_CODIGO_PROCESSAMENTO = 2154308;
+
+
+=============================================================
+                TIPOS DE LANÇAMENTOS
+=============================================================
+SELECT FN178_ID_FILIAL,
+       FN178_TIPO,
+       FN178_NUMERO_DOCUMENTO,
+       FN178M_ID_ARQUIVO,
+       FN178_VALOR,
+       FN178_DT,
+       FN178_DATA_VENDA,
+       FN178M_DATA,
+       FN178L_DATAFROM FINANCEIRO..FN178_NUMERARIO WITH (NOLOCK);
+LEFT JOIN FINANCEIRO..FN178N_TRANSACAO_NUMERARIO
+WITH (NOLOCK) ON FN178_ID = FN178N_TRANSACAO_NUMERARIO.FN178N_ID_NUMERARIO
+LEFT JOIN FINANCEIRO..FN178M_TRANSACAO_GTV WITH (NOLOCK) ON FN178M_ID = FN178N_ID_TRANSACAO
+LEFT JOIN FINANCEIRO..FN178L_ARQUIVO_NUMERARIO WITH (NOLOCK);
+ON FN178M_TRANSACAO_GTV.FN178M_ID_ARQUIVO = FN178L_ARQUIVO_NUMERARIO.FN178L_IDWHERE FN178_TIPO = 1  and FN178_DATA_VENDA between '2022-11-01' and '2023-01-31'and FN178_ATIVO = 1
+GROUP BY FN178_ID_FILIAL, FN178_TIPO, FN178_NUMERO_DOCUMENTO, FN178M_ID_ARQUIVO, FN178_VALOR, FN178_DT, FN178_DATA_VENDA, FN178M_DATA, FN178L_DATA;

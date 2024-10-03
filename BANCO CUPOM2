@@ -1,0 +1,354 @@
+
+---Consultar Pedido Cupom ---
+select  bc01a_id_filial,bc01a_cupom,bc01a_pedido_faturado,bc01a_id,bc01a_valor_total,bc01a_valor_faturado, *
+from banco_cupom.bc01a_cupom_capa
+--      inner join banco_cupom.bc01b_cupom_produtos a on bc01a_cupom_capa.bc01a_id = a.bc01b_id_cupom_capa
+inner join banco_cupom.bc01d_cupom_finalizadoras b01dcf on bc01a_cupom_capa.bc01a_id = b01dcf.bc01d_id_cupom_capa
+where bc01a_id_filial = 41 and bc01a_pdv = 30 and bc01a_cupom = 93211-- and bc01a_data_movimento = '20230113'
+  and bc01a_cancelado = false;
+
+select * from credito_cliente.impressao_boleto where ib_filial_id= 41 and ib_cupom in (93211);
+
+select *
+from banco_cupom.bc01a_cupom_capa
+where bc01a_id_filial = 28
+  and bc01a_pdv = 244
+  and bc01a_cupom = 13955;
+
+
+
+select *
+from banco_cupom.bc01i_cupom_integracao
+where bc01i_filial = 41
+  and bc01i_pdv = 30
+  and bc01i_cupom = 93211;
+
+select *
+from banco_cupom.bc01i_cupom_integracao
+where bc01i_filial = 300
+  and bc01i_id_cupom_capa = 373779391;
+
+select * from banco_cupom.bc01a_cupom_capa
+where bc01a_id_filial= 45
+    and bc01a_pdv = 127
+    and bc01a_data_movimento = '2023-02-10'
+    and bc01a_operador_movimento = 2
+--     and bc01a_cupom_pai = 93211 ;
+
+select * from banco_cupom.bc01b_cupom_produtos
+where bc01b_id_cupom_capa = 369601164;
+
+----
+SELECT
+  schema_name,
+  relname,
+  pg_size_pretty(table_size) AS size,
+  table_size
+FROM (
+       SELECT
+         pg_catalog.pg_namespace.nspname           AS schema_name,
+         relname,
+         pg_relation_size(pg_catalog.pg_class.oid) AS table_size
+       FROM pg_catalog.pg_class
+         JOIN pg_catalog.pg_namespace ON relnamespace = pg_catalog.pg_namespace.oid
+     ) t
+WHERE schema_name NOT LIKE 'pg_%' -- and relname = 'pedi_desconto'
+ORDER BY table_size DESC;
+
+
+###Lotes de tesouraria por finalizadora
+
+select
+             --te01a_id_filial
+    distinct te03a_id                   as id,
+             te02b_descricao            as finalizadora,
+             te03a_status_receber       as status_recebe,
+             te03a_status_pagar         as status_pagar,
+             te01a_id_filial            as filial,
+             te01a_data_movimento::date as data,
+             te04a_descricao,
+             te03a_id_finalizadora
+FROM tesouraria.te03a_lote_tesouraria
+         left join tesouraria.te04a_logs_rotinas on te04a_id_lote = te03a_id
+         inner join tesouraria.te02b_finalizadora on te02b_id = te03a_id_finalizadora
+         inner join tesouraria.te01a_fechamento_loja on te03a_id_fechamento = te01a_id
+where te03a_id_finalizadora in (1)
+  and te01a_data_movimento between '2023-03-01' and '2023-03-09'
+  and te01a_id_filial < 1000
+  and (te03a_status_pagar <> 1 or te03a_status_receber <> 1)
+order by finalizadora, data desc;
+
+select * from tesouraria.te03a_lote_tesouraria
+where te03a_id in (757853);
+
+
+-- LJ 39
+-- PDV 126
+-- CUPOM 88184
+
+select *
+    from tesouraria.te02c_finalizadora_configuracao where te02c_referencia_operacao in(1, 5, 8, 11) and te02c_codigo_operacao = 1002 and te02c_tipo_titulo = 2 and te02c_id_finalizadora = 2;
+-- 1, 5, 8, 11
+select
+             --te01a_id_filial
+    distinct te03a_id                   as id,
+             te02b_descricao            as finalizadora,
+             te03a_status_receber       as status_recebe,
+             te03a_status_pagar         as status_pagar,
+             te01a_id_filial            as filial,
+             te01a_data_movimento::date as data,
+             te04a_descricao,
+             te03a_id_finalizadora
+FROM tesouraria.te03a_lote_tesouraria
+         left join tesouraria.te04a_logs_rotinas on te04a_id_lote = te03a_id
+         inner join tesouraria.te02b_finalizadora on te02b_id = te03a_id_finalizadora
+         inner join tesouraria.te01a_fechamento_loja on te03a_id_fechamento = te01a_id
+where
+  te01a_id_filial = 283
+  and te01a_data_movimento between '2023-02-15' and '2023-02-15'
+  --and te01a_id_filial < 1000
+  --and (te03a_status_pagar <> 1 or te03a_status_receber <> 1)
+--order by finalizadora, data des
+
+select * from tesouraria.te03a_lote_tesouraria talt where te03a_id in (726138);
+
+    ---Consultar tesouraria.---
+select te01a_id_filial as loja, to_char(te01a_data_movimento, 'dd/MM/yyyy'), te01a_id, te01a_status
+from tesouraria.te01a_fechamento_loja
+where te01a_status not in (2,4)
+  and te01a_data_movimento between '2023-02-01' and '2023-02-28'
+order by te01a_data_movimento, te01a_id_filial;
+
+select * from tesouraria.te03a_lote_tesouraria
+inner join tesouraria.te01a_fechamento_loja on te01a_id = te03a_id_fechamento
+where te01a_data_movimento >= '2023-02-20' and te03a_id_finalizadora = 1 and te03a_status_receber <> 1;
+
+select sum(bc01d_valor) valor,  bc01a_id_filial,
+to_char(bc01a_data_movimento, 'dd/MM/yyyy') as data,  bc01a_pdv,     te02b_descricao, bc01a_cod_operador,    bc01a_nome_operador,  bc01a_operador_movimento, bc01d_finalizadora,
+ count(*) as qtd_cupons
+
+from banco_cupom.bc01a_cupom_capa
+inner join banco_cupom.bc01d_cupom_finalizadoras on bc01a_id = bc01d_id_cupom_capa
+inner join tesouraria.te02b_finalizadora on bc01d_finalizadora = te02b_id
+where --bc01a_id_filial=5
+--and bc01a_pdv=226
+te02b_descricao = 'DINHEIRO'
+and bc01a_data_movimento between  '2023-02-17' and '2023-02-17'
+-- and bc01a_data_movimento='2023-02-20'
+-- and bc01a_operador_movimento=1
+-- and bc01a_operador_movimento=1
+and bc01a_cancelado=false
+and bc01d_finalizadora = 1
+group by te02b_descricao, bc01a_id_filial, to_char(bc01a_data_movimento, 'dd/MM/yyyy'), bc01a_pdv, bc01a_cod_operador, bc01a_nome_operador, bc01a_operador_movimento, bc01d_finalizadora
+order by bc01d_finalizadora;
+
+
+---CONSULTAR MOVIMENTO---
+select  *
+--bc01a_id_filial,
+--to_char(bc01a_data_movimento, 'dd/MM/yyyy') as data,  bc01a_pdv,     te02b_descricao, bc01a_cod_operador,    bc01a_nome_operador,  bc01a_operador_movimento, bc01d_finalizadora,
+--sum(bc01d_valor) as valor,  count(*) as qtd_cupons
+
+from banco_cupom.bc01a_cupom_capa
+inner join banco_cupom.bc01d_cupom_finalizadoras on bc01a_id = bc01d_id_cupom_capa
+inner join tesouraria.te02b_finalizadora on bc01d_finalizadora = te02b_id
+where bc01a_id_filial=609
+and bc01a_pdv=2
+and te02b_descricao = 'DINHEIRO'
+and bc01a_data_movimento='2022-12-16'
+and bc01a_operador_movimento=1
+and bc01a_cancelado=false
+and bc01d_finalizadora<>90
+--group by te02b_descricao, bc01a_id_filial, to_char(bc01a_data_movimento, 'dd/MM/yyyy'), bc01a_pdv, bc01a_cod_operador, bc01a_nome_operador, bc01a_operador_movimento, bc01d_finalizadora
+--order by bc01d_finalizadora
+
+
+select te01a_id_filial as Loja, bc02b_pdv as PDV, to_char(te01a_data_movimento, 'dd/MM/yyyy') as DATA , te01a_id as Identificador, te01a_status as STATUS
+from tesouraria.te01a_fechamento_loja
+inner join banco_cupom.bc02b_fechamento_movimento on te01a_id_filial = bc02b_filial_id and te01a_data_movimento = bc02b_data_movimento
+-- inner join banco_cupom.bc02b_fechamento_movimento on bc02b_filial_id = te01a_id_filial
+where
+    te01a_status not in (2,4,6)
+  and bc02b_pdv <= 800
+  and bc02b_data_fechamento is null
+  and te01a_data_movimento < now()::date
+order by te01a_data_movimento, te01a_id_filial;
+
+---CONSULTAR TESOURARIA---
+select bc02b_filial_id,bc02b_pdv, bc02b_data_movimento, bc02b_data_fechamento
+from banco_cupom.bc02b_fechamento_movimento
+where bc02b_data_fechamento is null
+  and bc02b_data_movimento between '2023-02-01' and '2023-02-28'
+group by  bc02b_filial_id,bc02b_pdv,  bc02b_data_movimento, bc02b_data_fechamento;
+
+--- Consultar Status Pdv Fechamento Dia Tela Auditoria ---
+select * from banco_cupom.bc02b_fechamento_movimento
+where --bc02b_status != 3    and
+        bc02b_filial_id = 300
+    and bc02b_pdv = 102
+    and bc02b_data_movimento = '2023-02-06';
+
+--- FILA FATURAMENTO DE CUPOM ---
+select
+     sum(bc01a_valor_faturado)
+--        bc01a_pedido_faturado,
+--        bc01a_id,
+--        bc01a_valor_faturado,
+--        bc01a_cpf_crm,
+--        bc01a_id_filial,
+--        bc01a_pdv,
+--        bc01a_cupom,
+--        bc01i_data_inclusao,
+--        bc01a_tipo_uso,
+--        bc01i_tipo
+from banco_cupom.bc01i_cupom_integracao
+         inner join banco_cupom.bc01a_cupom_capa
+                    on bc01i_id_cupom_capa = bc01a_id
+where bc01i_situacao = 1
+  and bc01a_data_venda between '2023-02-08 ' and '2023-02-08 23:59:59'
+  and bc01a_cancelado = FALSE
+  and bc01a_tipo_uso in (8, 10, 11)
+-- group by
+--           bc01a_pedido_faturado, bc01a_id, bc01a_valor_faturado, bc01a_cpf_crm, bc01a_id_filial, bc01a_pdv, bc01a_cupom,
+--           bc01i_data_inclusao, bc01a_tipo_uso, bc01i_tipo
+-- order by bc01i_data_inclusao asc;
+
+SELECT *
+FROM banco_cupom.bc01a_cupom_capa
+inner join banco_cupom.bc01b_cupom_produtos on bc01a_cupom_capa.bc01a_id = bc01b_cupom_produtos.bc01b_id_cupom_capa
+WHERE bc01a_pedido_faturado = 791849010
+  AND bc01a_cancelado = FALSE;
+
+
+---  CONSULTAR PEDIDO DUPLICADO MATEUSMAIS  ---
+select bc01a_pedido_faturado, count(*)
+from banco_cupom.bc01a_cupom_capa
+where bc01a_tipo_uso in (8, 10, 11)
+  and bc01a_data_movimento between '2023-01-01' and '2023-01-31 '
+  and bc01a_cancelado = false
+group by bc01a_pedido_faturado
+having count(bc01a_pedido_faturado) > 1;
+
+select
+--     bc01a_id_filial, sum(bc01a_valor_faturado)
+       bc01a_pedido_faturado as Pedido,
+       bc01a_valor_faturado as valor,
+       bc01a_id_filial as filial,
+       bc01a_pdv as pdv,
+       bc01a_cupom as cupom,
+       bc01i_data_inclusao as data
+from banco_cupom.bc01i_cupom_integracao
+         inner join banco_cupom.bc01a_cupom_capa
+                    on bc01i_id_cupom_capa = bc01a_id
+where bc01i_situacao = 1
+  and bc01a_tipo_uso in (8,10,11)
+  and bc01a_data_venda >= now() - INTERVAL '1 month'
+  and bc01a_cancelado = FALSE
+group by
+            bc01a_pedido_faturado,
+       bc01a_valor_faturado,
+       bc01a_id_filial,
+       bc01a_pdv,
+       bc01a_cupom,
+       bc01i_data_inclusao
+order by bc01a_pedido_faturado asc;
+
+
+--- Buscar nosso numero / consultar titulo financeiro ---
+SELECT * --bc01a_desconto_total, bc01d_finalizadora, bc01d_nosso_numero, bc01b_preco_desconto, bc01a_valor_total
+FROM banco_cupom.bc01a_cupom_capa
+         INNER JOIN banco_cupom.bc01d_cupom_finalizadoras
+                    ON bc01a_cupom_capa.bc01a_id = bc01d_cupom_finalizadoras.bc01d_id_cupom_capa
+inner join banco_cupom.bc01b_cupom_produtos b01bcp on bc01a_cupom_capa.bc01a_id = b01bcp.bc01b_id_cupom_capa
+WHERE bc01a_id_filial = 279
+  AND bc01a_pdv = 20
+  AND bc01a_cupom = 36131;
+
+
+
+select * from banco_cupom.bc01b_cupom_produtos where bc01b_id_cupom_capa = 357166072;
+--- Buscar Cupom Pai e Filho ---
+
+select bc01a_situacao, bc01d_finalizadora, bc01a_tipo_uso, bc01a_cupom_pai, *
+from banco_cupom.bc01a_cupom_capa
+         inner join banco_cupom.bc01d_cupom_finalizadoras
+                    on bc01a_cupom_capa.bc01a_id = bc01d_cupom_finalizadoras.bc01d_id_cupom_capa
+where bc01a_id_filial = 7
+  and bc01a_pdv = 339
+  and bc01a_cupom = 98142
+  and bc01a_cancelado = false;
+
+select bc01d_finalizadora, bc01a_tipo_uso, bc01a_cupom_pai, *
+from banco_cupom.bc01a_cupom_capa
+         inner join banco_cupom.bc01d_cupom_finalizadoras
+                    on bc01a_cupom_capa.bc01a_id = bc01d_cupom_finalizadoras.bc01d_id_cupom_capa
+where bc01a_id_filial = 7
+  and bc01a_pdv = 339
+  and bc01a_cupom_pai in (98132)
+  and bc01a_cancelado = false;
+
+--- Lote tesouraria bot ---
+select * from tesouraria.te03a_lote_tesouraria;
+
+select bc01a_cupom, bc01a_id_filial, bc01a_pdv, bc01a_id_filial, bc01d_finalizadora, bc01a_data_movimento
+    from banco_cupom.bc01a_cupom_capa
+    inner join  banco_cupom.bc01d_cupom_finalizadoras on bc01a_cupom_capa.bc01a_id = bc01d_cupom_finalizadoras.bc01d_id_cupom_capa
+where --bc01d_finalizadora >= 0
+  bc01a_id_filial = 41
+  and bc01a_cupom = 91014
+  and bc01a_data_movimento between '2023-01-01' and '2023-01-02'
+  and bc01a_cancelado = false;
+
+----- PIX ------
+select * from pix.px01_registro_pix where px01_txid='E16501555202301261306e76a29b4d74';
+select * from pix.px01_registro_pix where px01_cnpj_recebedor = 03995515005045 and px01_data::date = '2023-02-07';
+select * from pix.px01_registro_pix
+        inner join pix.px01a_titulos_pix on px01a_id_lancamento_contas_pagar = px01_cnpj_recebedor
+where  px01_cnpj_recebedor = 47309599000103;
+
+--- Consulta Cupom ---- end point
+select  bc01a_chave_nfe,bc01a_chave_nfex,bc01a_cupom,bc01a_valor_faturado,bc01a_data_movimento,bc01a_data_venda
+from banco_cupom.bc01a_cupom_capa
+where bc01a_id_filial in (12)
+and bc01a_pdv in (151)
+-- and bc01a_operador_movimento in (1)
+-- and bc01a_troco > 0
+ and bc01a_cupom in  (50735)
+ --and bc01a_cupom = 12978
+--and bc01a_cupom <= 112560
+-- and bc01a_qtde_servicos <>0
+--and bc01a_chave_nfe in ('21221203995515000671651290002119679006303361')
+and bc01a_data_movimento between '2022-12-01' and '2022-12-31';
+
+
+select
+       te02a_descricao,*
+from tesouraria.te01a_fechamento_loja
+inner join tesouraria.te01b_fechamento_movimento on te01a_fechamento_loja.te01a_id = te01b_fechamento_movimento.te01b_id_fechamento_loja
+inner join tesouraria.te01c_fechamento_finalizacao on te01b_fechamento_movimento.te01b_id = te01c_fechamento_finalizacao.te01c_id_fechamento_movimento
+inner join tesouraria.te01d_finalizacao_detalhe on te01c_fechamento_finalizacao.te01c_id = te01d_finalizacao_detalhe.te01d_id_fechamento_finalizacao
+inner join tesouraria.te02a_motivo_finalizacao on te02a_id = te01d_id_motivo
+where te01a_id_filial = 39 and te01a_data_movimento = '2023-02-16' and te01a_id_filial = 39 and te01b_pdv = 126 and te01c_ref_cupom = 88184 --and te01b_movimento_operador = 2
+
+
+select count(*) as "Banco Cupom"
+from banco_cupom.bc01a_cupom_capa
+         inner join banco_cupom.bc01i_cupom_integracao a on bc01a_id = bc01i_id_cupom_capa
+where bc01a_cancelado = false
+  and bc01a_data_movimento = (TIMESTAMP 'now()' AT TIME ZONE 'UTC -3')::date
+  and bc01i_data_inclusao >= (TIMESTAMP 'now()' AT TIME ZONE 'UTC -3' - interval '1 minute');
+
+------------- CONSULTAR TESOURARIA -------------
+select bc02b_status, * from banco_cupom.bc02b_fechamento_movimento
+where bc02b_filial_id = 97
+--and bc02b_pdv = 103
+and bc02b_data_movimento = '2023-02-07'
+
+--------------Alterar dados na tesouraria--------------
+select * from tesouraria.te01a_fechamento_loja where te01a_id_filial= 194 and te01a_data_movimento = '2023-02-19';
+select * from tesouraria.te01b_fechamento_movimento where  te01b_id_fechamento_loja = 249709--and te01b_data_movimento = '2023-01-24'
+
+--------------Integração dos dados na tesouraria--------------
+select * from banco_cupom.bc01a_cupom_capa where bc01a_id_filial = 05 and bc01a_pdv = 226 and bc01a_cupom in (192612, 192613) and bc01a_data_movimento = '2023-01-21';
+
+ 

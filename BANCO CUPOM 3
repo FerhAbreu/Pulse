@@ -1,0 +1,161 @@
+with FINALIZADORA_AGRUPADA as (
+        select
+            te01a_id_filial as te01a_id_filial ,
+            te01b_data_movimento as te01b_data_movimento,
+            SUM(te01d_valor_venda) as te01c_valor_finalizadora,
+            SUM(CASE WHEN (te01c_finalizadora_id = 1 and te02a_codigo_operacao = 0 OR te01c_finalizadora_id = 7) then te01c_valor_apurado else te01d_valor_venda  END) as te01c_valor_apurado,
+            te01b_valor_desconto as te01b_valor_desconto ,
+            sum(case when coalesce(te02a_id,1) not in(1,15,18,21,26)  then te01d_valor_venda end) as te01b_valor_recebimento,
+            te01b_valor_cancelamento as te01b_valor_cancelamento,
+            SUM(case when te02a_id in(21) then te01d_valor_venda end) valorSaque,
+            SUM(case when te02a_id in(26) then te01d_valor_venda end) valorSaquePix,
+            SUM(case when te02a_id in(1,15,18,21,26) then te01d_valor_venda end) venda_liquida
+        from tesouraria.te01a_fechamento_loja
+            inner join tesouraria.te02d_filial_empresa on te02d_id_filial = te01a_id_filial
+            inner join tesouraria.te01b_fechamento_movimento on te01b_id_fechamento_loja = te01a_id
+            inner join tesouraria.te01c_fechamento_finalizacao
+                            on te01c_id_fechamento_movimento = te01b_id
+            left join tesouraria.te01d_finalizacao_detalhe ON te01d_id_fechamento_finalizacao = te01c_id
+            left join tesouraria.te02a_motivo_finalizacao ON te02a_id = te01d_id_motivo
+        where te02d_id_filial in (7)
+            and te01a_data_movimento between '2023-02-17' and '2023-02-21'
+        group by
+            te01a_id_filial,
+            te01b_data_movimento,
+            te01b_valor_desconto,
+            te01b_valor_recebimento,
+            te01b_valor_cancelamento
+        )
+        select
+            te01a_id_filial,
+            te01b_data_movimento,
+            sum(te01c_valor_finalizadora) as te01c_valor_finalizadora,
+            sum(te01c_valor_apurado) as te01c_valor_apurado,
+            sum(te01b_valor_desconto) as te01b_valor_desconto,
+            sum(te01b_valor_recebimento) as te01b_valor_recebimento,
+            sum(te01b_valor_cancelamento) as te01b_valor_cancelamento,
+            sum(valorSaque) as valorSaque,
+            sum(valorSaquePix) as valorSaquePix,
+            (sum(venda_liquida) + sum(te01b_valor_desconto) + sum(te01b_valor_cancelamento)) as venda_bruta,
+            sum(venda_liquida) - sum(coalesce(valorSaque,0)) -sum(coalesce(valorSaquePix, 0)) as venda_liquida
+        FROM FINALIZADORA_AGRUPADA
+        GROUP BY
+            te01a_id_filial,
+            te01b_data_movimento
+
+
+
+select 'insert into  tesouraria.te02c_finalizadora_configuracao (te02c_id_finalizadora,       te02c_id_empresa,       te02c_id_conta,       te02c_id_cliente,       te02c_id_agente_cobrador,       te02c_id_tipo_cobranca,       te02c_id_fornecedor,       te02c_id_mov_credito,       te02c_id_mov_debito,       te02c_id_mov_credito_externa,       te02c_id_mov_debito_externa,       te02c_id_tipo_lancamento,       te02c_id_comprador,       te02c_id_vendedor,       te02c_sufixo,       te02c_baixa_titulo,       te02c_taxa,       te02c_observacao,       te02c_dominio,       te02c_referencia_operacao,       te02c_codigo_operacao,       te02c_dias_vencimento,       te02c_tipo_titulo) values (' ||
+       te02c_id_finalizadora::varchar || ',' || te02c_id_empresa::varchar || ',' || te02c_id_conta::varchar || ',' ||
+       te02c_id_cliente::varchar || ',' || te02c_id_agente_cobrador::varchar || ',' ||
+       te02c_id_tipo_cobranca::varchar || ',' || te02c_id_fornecedor::varchar || ',' || te02c_id_mov_credito::varchar ||
+       ',' || te02c_id_mov_debito::varchar || ',' || te02c_id_mov_credito_externa::varchar || ',' ||
+       te02c_id_mov_debito_externa::varchar || ',' || te02c_id_tipo_lancamento::varchar || ',' ||
+       te02c_id_comprador::varchar || ',' || te02c_id_vendedor::varchar || ',''' || te02c_sufixo::varchar || ''',' ||
+       te02c_baixa_titulo::varchar || ',' || te02c_taxa::varchar || ',''' || te02c_observacao::varchar ||
+       '- Curso Profissionalizante ' || ''',' || te02c_dominio::varchar || ',' || 9::varchar || ',' ||
+       te02c_codigo_operacao::varchar || ',' || te02c_dias_vencimento::varchar || ',' || te02c_tipo_titulo::varchar ||
+       ');'
+from tesouraria.te02c_finalizadora_configuracao where te02c_referencia_operacao = 10  and te02c_tipo_titulo = 1 and te02c_id_empresa = 2;
+
+select * from tesouraria.te02c_finalizadora_configuracao where te02c_id_finalizadora = 1 and te02c_referencia_operacao = 9 and te02c_tipo_titulo = 1 and te02c_id_empresa = 2;
+
+
+
+==== Inserir venda em dinheiro $R ====
+
+-- insert into tesouraria.te01c_fechamento_finalizacao(
+--                                                     te01c_id_fechamento_movimento
+--                                                    ,te01c_finalizadora_id
+--                                                    ,te01c_bandeira_id
+--                                                    ,te01c_valor_finalizadora
+--                                                    ,te01c_valor_apurado
+--                                                    ,te01c_data_vencimento
+--                                                    ,te01c_parcelas
+--                                                    ,te01c_dominio
+--                                                    ,te01c_cpf_cnpj
+--                                                    ,te01c_rede
+--                                                    ,te01c_comp
+--                                                    ,te01c_codigo_banco
+--                                                    ,te01c_codigo_agencia
+--                                                    ,te01c_codigo_conta
+--                                                    ,te01c_codigo_cartao
+--                                                    ,te01c_nsu_sitef
+--                                                    ,te01c_nsu_host
+--                                                    ,te01c_produto_tef
+--                                                    ,te01c_codigo_autorizacao
+--                                                    ,te01c_nosso_numero
+--                                                    ,te01c_bin_cartao
+--                                                    ,te01c_ref_cupom
+--                                                    ,te01c_numero_cheque
+-- )
+SELECT
+      te01b_id
+     ,bc01d_finalizadora
+     ,bc01d_bandeira
+     ,bc01d_valor
+     ,bc01d_valor
+     ,bc01d_data_vencimento
+     ,bc01d_parcelas
+     ,'0'
+     ,bc01d_cpf_cnpj
+     ,'0'
+     ,'0'
+     ,bc01d_codigo_banco
+     ,bc01d_agencia
+     ,bc01d_conta
+     ,'0'
+     ,bc01d_nsusitef
+     ,bc01d_nsuhost
+     ,bc01d_produto_tef
+     ,bc01d_codigo_autorizacao
+     ,coalesce(bc01c_tipo_uso,0)
+     ,coalesce(bc01c_referencia,'0')
+     ,bc01a_cupom
+     ,bc01d_numero_cheque
+FROM
+    banco_cupom.bc02b_fechamento_movimento
+        INNER JOIN banco_cupom.bc01a_cupom_capa
+                   ON bc01a_id_filial = bc02b_filial_id AND
+                      bc01a_pdv = bc02b_pdv AND
+                      bc01a_data_movimento::date = bc02b_data_movimento::date AND
+                      bc02b_movimento_operador = bc01a_operador_movimento
+        INNER JOIN banco_cupom.bc01d_cupom_finalizadoras
+                   ON bc01d_id_cupom_capa = bc01a_id
+        inner join tesouraria.te01a_fechamento_loja
+                   on te01a_id_filial = bc02b_filial_id and
+                      te01a_data_movimento   = bc02b_data_movimento
+        INNER JOIN tesouraria.te01b_fechamento_movimento
+                   on te01b_id_fechamento_loja = te01a_id and
+                      te01b_movimento_operador = bc01a_operador_movimento and
+                      te01b_pdv                = bc01a_pdv
+        LEFT JOIN banco_cupom.bc01c_cupom_servicos
+                  ON bc01c_id_cupom_capa = bc01a_id
+WHERE
+    bc02b_data_fechamento is not null and bc02b_cod_operador = bc01a_cod_operador
+  and bc01a_enviado_financeiro  = false
+  and  not exists (SELECT
+            1
+        FROM
+            tesouraria.te01a_fechamento_loja
+                INNER JOIN tesouraria.te02d_filial_empresa
+                           ON te02d_id_filial = te01a_id_filial
+                INNER JOIN tesouraria.te01b_fechamento_movimento
+                           ON te01b_id_fechamento_loja = te01a_id
+                INNER JOIN tesouraria.te01c_fechamento_finalizacao
+                           ON te01c_id_fechamento_movimento = te01b_id
+        where
+                te01a_id_filial = bc02b_filial_id and
+                te01a_data_movimento::date  = bc02b_data_movimento::date and
+                te01b_pdv = bc02b_pdv and
+                te01b_cod_operador= bc02b_cod_operador and
+                te01c_ref_cupom= bc01a_cupom           and
+                te01b_movimento_operador = bc02b_movimento_operador and
+                te01b_cod_operador =  bc01a_cod_operador
+    )
+  and bc02b_data_movimento::date = '2023-03-08'
+  and te01a_id_filial in (1)
+  and bc01a_pdv in (347)
+--   and bc01d_finalizadora <> 90
+  and bc01d_finalizadora = 2;
+ 

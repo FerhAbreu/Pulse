@@ -1,0 +1,29 @@
+--------------------------------------
+SELECT *
+FROM sitef.public.st02_transacao_sitef
+where --st02_nsu_sitef = 138
+--   and st02_produto = 'JGV Credito'
+   st02_valor = 4000.000
+  and st02_data_transacao between '2023-02-12' and '2023-02-14';
+
+--------------------------------------
+SELECT *
+FROM st03_filial_sitef
+WHERE st03_id_filial = 200;
+
+--------------------------------------
+select *
+from st02_transacao_sitef
+where st02_codigo_loja_sitef = 2
+  and st02_cupom_fiscal = 147104
+  and st02_data_transacao = '2023-02-04'
+;
+
+--------------------------------------
+select *
+from st02_transacao_sitef
+where st02_cupom_fiscal = 13955
+  and st02_data_transacao = '2023-03-03'
+  and st02_codigo_loja_sitef = 53;
+
+ 
