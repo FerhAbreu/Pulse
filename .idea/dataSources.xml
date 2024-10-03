@@ -22,5 +22,19 @@
       <jdbc-url>jdbc:postgresql://postgres.prod.maxipos:5432/maxipos</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="PixToken" uuid="4e4f0669-cd84-48a7-a3ec-9b08440a70c3">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://pssql-pix-token-prod.postgres.database.azure.com:5432/postgres</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="Pix" uuid="c6fa15fe-8db2-4e14-a799-cd2b443e94fe">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://br-psql-flex-d4ds-pix-autorizador-prod.postgres.database.azure.com:5432/pix</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
